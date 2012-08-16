@@ -7,6 +7,9 @@ it and provide reference implementations of useful hard- and software.
 Currently we are finalizing our understanding of the protocol and developing
 hard- and software to serve as bus master for a device.
 
+### Contact ###
+The principal maintainer of this project is Roy Smeding; reachable through GitHub as roysmeding and e-mail as roy.smeding@gmail.com.
+
 ## Subdirectories ##
 Subdirectories are split up by subproject. Currently, the following
 subdirectories are present:
