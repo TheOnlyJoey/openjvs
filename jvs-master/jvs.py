@@ -86,10 +86,9 @@ def send_packet(ser, dest, seq):
 		s = (s + b) % 256
 	send_byte(ser, s)
 
+# start of main program -- resets the bus and identifies the attached device
+# should make for an okay basic sanity check
 if __name__ == "__main__":
-	# start of main program -- resets the bus and identifies the attached device
-	# okay basic sanity check
-
 	# main loop
 	print "opening serial port..."
 	if len(sys.argv)>1:
@@ -125,7 +124,7 @@ if __name__ == "__main__":
 		print "error codes: ", reply[1][0], reply[1][1]
 		sys.exit()
 
-	for b in reply[1]:
+	for b in reply[1][2:]:
 		if b == 0:
 			break
 		sys.stdout.write(chr(b))
