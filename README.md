@@ -1,27 +1,27 @@
-The OpenJVS project is started to reverse engineer the common used JVS Arcade 
-protocol, and document how to use the protocol for writing a usb-hid 
-for common hardware (currently using FT232 and RS485 chips).
+# OpenJVS #
+## Introduction ##
+The OpenJVS project aims to reverse engineer the commonly used JVS-I/O
+protocol for arcade cabinet input devices. It also aims to document
+it and provide reference implementations of useful hard- and software.
 
-Currently we are in the process of writing a parser for 
-information we acquire using a custom board created with a 
-FT232 and rs485 chip.
+Currently we are finalizing our understanding of the protocol and developing
+hard- and software to serve as bus master for a device.
 
---- Data Gathering ---
+## Subdirectories ##
+Subdirectories are split up by subproject. Currently, the following
+subdirectories are present:
 
-Data can be gathered using our custom board, by sidechaining between the JVS
-harness (we are using a Naomi Universal) and a Arcade board 
-(we are using a Sega Lindbergh Yellow.)
+### jvs-snoop ###
+This program snoops on existing JVS traffic using a splitter cable between a
+bus host (arcade controller) and slave(s) (I/O boards).
 
-JVS -> |Custom Board| -> Lindbergh
-	     |
-	     PC
+### jvs-master ###
+This program aims to provide a joystick interface over standard USB-to-RS485
+hardware. Due to limitations in the hardware it will only support one slave
+device.
 
-The PC captures the data between the JVS and the Lindbergh which can be
-displayed in a terminal with serial over usb.
-Currently a parser is written in python, to display as much possible as
-we can decode based on known Japanese documentation and guessing.
-
---- Final Implementation ---
-
-The final implementation will be a general usb-hid driver that can be used
-on easy to aquire hardware
+### jvs-hid ###
+This subdirectory is meant for the hard- and software for a custom USB device
+that will translate as much of the protocol as possible to USB using a
+microcontroller. Development on this has only just started at the time of
+this writing.
