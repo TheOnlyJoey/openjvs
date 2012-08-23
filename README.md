@@ -14,14 +14,8 @@ The principal maintainer of this project is Roy Smeding; reachable through GitHu
 Subdirectories are split up by subproject. Currently, the following
 subdirectories are present:
 
-### jvs-snoop ###
-This program snoops on existing JVS traffic using a splitter cable between a
-bus host (arcade controller) and slave(s) (I/O boards).
-
-### jvs-master ###
-This program aims to provide a joystick interface over standard USB-to-RS485
-hardware. Due to limitations in the hardware it will only support one slave
-device.
+### python ###
+This subdirectory contains two programs, jvs-master and jvs-snoop, written in the Python programming language. They interface to the bus -- one as a bus master, the other as a listener via a splitter cable for debugging.
 
 ### jvs-hid ###
 This subdirectory is meant for the hard- and software for a custom USB device
