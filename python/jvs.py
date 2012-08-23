@@ -150,22 +150,16 @@ class JVS:
 			# inputs
 			elif data[position] == CAP_PLAYERS:
 				capabilities['switches'] = { 'players':data[position+1], 'switches':data[position+2] }
-
 			elif data[position] == CAP_COINS:
 				capabilities['coins'] = data[position+1]
-
 			elif data[position] == CAP_ANALOG_IN:
 				capabilities['analog_in'] = { 'channels':data[position+1], 'bits':data[position+2] }
-
 			elif data[position] == CAP_ROTARY:
 				capabilities['rotary'] = data[position+1]
-
 			elif data[position] == CAP_KEYPAD:
 				capabilities['keypad'] = True
-
 			elif data[position] == CAP_LIGHTGUN:
 				capabilities['lightgun'] = { 'xbits':data[position+1], 'ybits':data[position+2], 'channels':data[position+3] }
-
 			elif data[position] == CAP_GPI:
 				capabilities['gpi'] = (data[position+1]<<8) | data[position+2]
 
@@ -173,19 +167,14 @@ class JVS:
 			# outputs
 			elif data[position] == CAP_CARD:
 				capabilities['card'] = data[position+1]
-
 			elif data[position] == CAP_HOPPER:
 				capabilities['hopper'] = data[position+1]
-
 			elif data[position] == CAP_GPO:
 				capabilities['gpo'] = data[position+1]
-
 			elif data[position] == CAP_ANALOG_OUT:
 				capabilities['analog_out'] = data[position+1]
-
 			elif data[position] == CAP_DISPLAY:
 				capabilities['display'] = { 'cols':data[position+1], 'rows':data[position+2], 'enc':ENCODINGS[data[position+3]] }
-
 			elif data[position] == CAP_BACKUP:
 				capabilities['backup'] = True
 
