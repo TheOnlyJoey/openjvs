@@ -183,26 +183,39 @@ class JVS:
 		return capabilities
 
 	def reset(self):
-		"""Sends a bus reset and initializes all devices. For now we assume one device is connected."""
+		"""Sends a bus reset and initializes all devices."""
 		# reset the bus
 		self.write_packet(BROADCAST, [ CMD_RESET, CMD_RESET_ARG ])
 		self.write_packet(BROADCAST, [ CMD_RESET, CMD_RESET_ARG ])	# send the reset packet twice as per spec
 		time.sleep(INIT_DELAY)										# wait for the devices to initialize
 
-		# assign one address to the device assumed to be there
-		device_addr = 0x01
-		self.cmd(BROADCAST, [ CMD_ASSIGN_ADDR, device_addr ])
+		# assign addresses to devices
+		device_addr = 0x01			# the address we start at, 0x00 is master
+		devlist = [ ]				# temporary list of addresses to query them after this part
+		sense = self.ser.getCD()	# sense line will indicate whether the protocol is done
+		while sense:
+			self.cmd(BROADCAST, [ CMD_ASSIGN_ADDR, device_addr ])
+			devlist.append(device_addr)
+			sense = self.ser.getCD()
+			device_addr += 1
 
-		# identify device: request ID string, version numbers and capability struct
-		id_data			= ''.join([ chr(b) for b in self.cmd(device_addr, [ CMD_REQUEST_ID ])[:-1]]).split(';')
-		command_version	= bcd2num(self.cmd(device_addr, [ CMD_COMMAND_VERSION	]))
-		jvs_version		= bcd2num(self.cmd(device_addr, [ CMD_JVS_VERSION		]))
-		comms_version	= bcd2num(self.cmd(device_addr, [ CMD_COMMS_VERSION		]))
-		capabilities	= self.get_capabilities(device_addr)
+		# identify devices: request ID string, version numbers and capability struct
+		for device in devlist:
+			# make ID data from a list of bytes into a string, and then into a list of strings
+			id_data			= ''.join([ chr(b) for b in self.cmd(device, [ CMD_REQUEST_ID ])[:-1]]).split(';')
 
-		self.devices.append(Device(device_addr, id_data,
-			{ 'command':comms_version, 'jvs':jvs_version, 'comms':comms_version },
-			capabilities))
+			# the three version numbers
+			command_version	= bcd2num(self.cmd(device, [ CMD_COMMAND_VERSION	]))
+			jvs_version		= bcd2num(self.cmd(device, [ CMD_JVS_VERSION		]))
+			comms_version	= bcd2num(self.cmd(device, [ CMD_COMMS_VERSION		]))
+
+			# capabilities structure, tells us what the device can do
+			capabilities	= self.get_capabilities(device)
+
+			# store inside class
+			self.devices.append(Device(device_addr, id_data,
+				{ 'command':comms_version, 'jvs':jvs_version, 'comms':comms_version },
+				capabilities)))
 
 	def read_switches(self, addr, num_players):
 		"""Reads out the switch states of a given device. Return value is a list of dicts by player and then by button type. Player 0 contains the general switch states."""
