@@ -193,10 +193,12 @@ class JVS:
 		device_addr = 0x01			# the address we start at, 0x00 is master
 		devlist = [ ]				# temporary list of addresses to query them after this part
 		sense = self.ser.getCD()	# sense line will indicate whether the protocol is done
+		print 'sense: ', sense
 		while sense:
 			self.cmd(BROADCAST, [ CMD_ASSIGN_ADDR, device_addr ])
 			devlist.append(device_addr)
 			sense = self.ser.getCD()
+			print 'sense: ', sense
 			device_addr += 1
 
 		# identify devices: request ID string, version numbers and capability struct
@@ -215,7 +217,7 @@ class JVS:
 			# store inside class
 			self.devices.append(Device(device_addr, id_data,
 				{ 'command':comms_version, 'jvs':jvs_version, 'comms':comms_version },
-				capabilities)))
+				capabilities))
 
 	def read_switches(self, addr, num_players):
 		"""Reads out the switch states of a given device. Return value is a list of dicts by player and then by button type. Player 0 contains the general switch states."""
