@@ -108,4 +108,5 @@ BTN_PLAYER_PUSH8	= 1 << 2
 
 
 # timing data for the bus, in seconds
-INIT_DELAY			= 2.0	# delay after a bus reset to wait for devices to initialize
+INIT_DELAY			= 1.0	# delay after a bus reset to wait for devices to initialize
+CMD_DELAY			= 0.1	# delay between commands

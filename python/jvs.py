@@ -68,7 +68,7 @@ class JVS:
 	"""Basic JVS object encapsulating all state involved in a JVS connection"""
 	def __init__(self, port):
 		"""Initializes the JVS connection. Doesn't cause a bus reset or device enumeration to take place"""
-		self.ser = serial.Serial(port=port, baudrate=115200, timeout=1)	# initialize serial connection
+		self.ser = serial.Serial(port=port, baudrate=115200, timeout=5)	# initialize serial connection
 
 		# initialize internal state
 		self.devices = []
@@ -137,6 +137,7 @@ class JVS:
 		if data[1] != REPORT_SUCCESS:
 			raise ReportError(cmd[0], data[1])			# report error -- error with this command in particular
 
+		time.sleep(CMD_DELAY)
 		return data[2:]									# slice off status and report codes
 
 	def get_capabilities(self, addr):
@@ -182,24 +183,27 @@ class JVS:
 
 		return capabilities
 
-	def reset(self):
+	def reset(self, num_devices = None):
 		"""Sends a bus reset and initializes all devices."""
 		# reset the bus
-		self.write_packet(BROADCAST, [ CMD_RESET, CMD_RESET_ARG ])
 		self.write_packet(BROADCAST, [ CMD_RESET, CMD_RESET_ARG ])	# send the reset packet twice as per spec
 		time.sleep(INIT_DELAY)										# wait for the devices to initialize
 
 		# assign addresses to devices
-		device_addr = 0x01			# the address we start at, 0x00 is master
-		devlist = [ ]				# temporary list of addresses to query them after this part
-		sense = self.ser.getCD()	# sense line will indicate whether the protocol is done
-		print 'sense: ', sense
-		while sense:
-			self.cmd(BROADCAST, [ CMD_ASSIGN_ADDR, device_addr ])
-			devlist.append(device_addr)
-			sense = self.ser.getCD()
-			print 'sense: ', sense
-			device_addr += 1
+		if num_devices == None:
+			device_addr = 0x01			# the address we start at, 0x00 is master
+			devlist = [ ]				# temporary list of addresses to query them after this part
+			sense = self.ser.getCD()	# sense line will indicate whether the protocol is done
+			while sense:
+				self.cmd(BROADCAST, [ CMD_ASSIGN_ADDR, device_addr ])
+				devlist.append(device_addr)
+				sense = self.ser.getCD()
+				device_addr += 1
+		else:
+			for device_addr in range(1, num_devices+1):
+				self.cmd(BROADCAST, [ CMD_ASSIGN_ADDR, device_addr ])
+				devlist.append(device_addr)
+				
 
 		# identify devices: request ID string, version numbers and capability struct
 		for device in devlist:
@@ -207,15 +211,15 @@ class JVS:
 			id_data			= ''.join([ chr(b) for b in self.cmd(device, [ CMD_REQUEST_ID ])[:-1]]).split(';')
 
 			# the three version numbers
-			command_version	= bcd2num(self.cmd(device, [ CMD_COMMAND_VERSION	]))
-			jvs_version		= bcd2num(self.cmd(device, [ CMD_JVS_VERSION		]))
-			comms_version	= bcd2num(self.cmd(device, [ CMD_COMMS_VERSION		]))
+			command_version	= bcd2num(self.cmd(device, [ CMD_COMMAND_VERSION	])[0])
+			jvs_version		= bcd2num(self.cmd(device, [ CMD_JVS_VERSION		])[0])
+			comms_version	= bcd2num(self.cmd(device, [ CMD_COMMS_VERSION		])[0])
 
 			# capabilities structure, tells us what the device can do
 			capabilities	= self.get_capabilities(device)
 
 			# store inside class
-			self.devices.append(Device(device_addr, id_data,
+			self.devices.append(Device(device, id_data,
 				{ 'command':comms_version, 'jvs':jvs_version, 'comms':comms_version },
 				capabilities))
 
@@ -224,24 +228,26 @@ class JVS:
 		data = self.cmd(addr, [ CMD_READ_SWITCHES, num_players, 2 ])	# execute command -- always read 2 bytes/player
 
 		ret = [ ]
-		ret[0] = {	 'test':bool(data[0] & BTN_GENERAL_TEST),
+		ret.append({	 'test':bool(data[0] & BTN_GENERAL_TEST),
 					'tilt1':bool(data[0] & BTN_GENERAL_TILT1),
 					'tilt2':bool(data[0] & BTN_GENERAL_TILT2),
-					'tilt3':bool(data[0] & BTN_GENERAL_TILT3) }
+					'tilt3':bool(data[0] & BTN_GENERAL_TILT3) })
 
 		for player in range(0, num_players):
-			ret[player+1] = {	  'start':bool(data[player*2+1] & BTN_PLAYER_START),
-								'service':bool(data[player*2+1] & BTN_PLAYER_SERVICE),
-								     'up':bool(data[player*2+1] & BTN_PLAYER_UP),
-								   'down':bool(data[player*2+1] & BTN_PLAYER_DOWN),
-								   'left':bool(data[player*2+1] & BTN_PLAYER_LEFT),
-								  'right':bool(data[player*2+1] & BTN_PLAYER_RIGHT),
-								  'push1':bool(data[player*2+1] & BTN_PLAYER_PUSH1),
-								  'push2':bool(data[player*2+1] & BTN_PLAYER_PUSH2),
+			ret.append({	  'start':bool(data[player*2+1] & BTN_PLAYER_START),
+							'service':bool(data[player*2+1] & BTN_PLAYER_SERVICE),
+							     'up':bool(data[player*2+1] & BTN_PLAYER_UP),
+							   'down':bool(data[player*2+1] & BTN_PLAYER_DOWN),
+							   'left':bool(data[player*2+1] & BTN_PLAYER_LEFT),
+							  'right':bool(data[player*2+1] & BTN_PLAYER_RIGHT),
+							  'push1':bool(data[player*2+1] & BTN_PLAYER_PUSH1),
+							  'push2':bool(data[player*2+1] & BTN_PLAYER_PUSH2),
 
-								  'push3':bool(data[player*2+2] & BTN_PLAYER_PUSH3),
-								  'push4':bool(data[player*2+2] & BTN_PLAYER_PUSH4),
-								  'push5':bool(data[player*2+2] & BTN_PLAYER_PUSH5),
-								  'push6':bool(data[player*2+2] & BTN_PLAYER_PUSH6),
-								  'push7':bool(data[player*2+2] & BTN_PLAYER_PUSH7),
-								  'push8':bool(data[player*2+2] & BTN_PLAYER_PUSH8) }
+							  'push3':bool(data[player*2+2] & BTN_PLAYER_PUSH3),
+							  'push4':bool(data[player*2+2] & BTN_PLAYER_PUSH4),
+							  'push5':bool(data[player*2+2] & BTN_PLAYER_PUSH5),
+							  'push6':bool(data[player*2+2] & BTN_PLAYER_PUSH6),
+							  'push7':bool(data[player*2+2] & BTN_PLAYER_PUSH7),
+							  'push8':bool(data[player*2+2] & BTN_PLAYER_PUSH8) })
+
+		return ret
