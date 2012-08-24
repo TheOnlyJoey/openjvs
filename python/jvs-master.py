@@ -14,7 +14,8 @@ import uinput
 
 # parse arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("-s", "--serial-device",  default="/dev/ttyUSB0", help="Use device DEVICE as a JVS connection")
+parser.add_argument("-s", "--serial-device",  default="/dev/ttyUSB0", metavar="DEVICE", help="Use device DEVICE as a JVS connection")
+parser.add_argument("--assume-devices", type=int, default=None, metavar="N", help="If given, skip regular address setting procedure and assume N devices connected.")
 parser.add_argument("-v", "--verbose", action="count", help="Enter verbose mode, which shows more information on the bus traffic. Use more than once for more output.")
 args = parser.parse_args()
 
@@ -29,7 +30,7 @@ if args.verbose > 1:
 
 if args.verbose > 1:
 	print("Resetting bus, assigning address, identifying device")
-jvs_state.reset()
+jvs_state.reset(args.assume_devices)
 
 # print a bunch of data
 id_meanings = [ 'Manufacturer', 'Product name', 'Serial number', 'Product version', 'Comment' ]
