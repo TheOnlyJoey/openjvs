@@ -2,21 +2,19 @@
 """
 Attempt to set up the JVS-I/O bus over a commodity USB/RS-485 converter,
 and expose the button functionality as a standard Linux joystick device.
-
-Meant to be run as a command-line program.
 """
 
 # imports
 import argparse
 import jvs
-import jvs_constants
 import uinput
 
 # parse arguments
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("-s", "--serial-device",  default="/dev/ttyUSB0", metavar="DEVICE", help="Use device DEVICE as a JVS connection")
 parser.add_argument("--assume-devices", type=int, default=None, metavar="N", help="If given, skip regular address setting procedure and assume N devices connected.")
-parser.add_argument("-v", "--verbose", action="count", help="Enter verbose mode, which shows more information on the bus traffic. Use more than once for more output.")
+parser.add_argument("-v", dest="verbose", action="count", help="Enter verbose mode, which shows more information on the bus traffic. Use more than once for more output.")
+parser.add_argument("-d", "--dump", action="store_true", default=False, help="Store raw sent/received data in a dump file named openjvs_dump_<date>_<time>.log.")
 args = parser.parse_args()
 
 if args.verbose > 0:
@@ -24,7 +22,7 @@ if args.verbose > 0:
 
 if args.verbose > 1:
 	print("Initializing JVS state")
-jvs_state = jvs.JVS(args.serial_device)
+jvs_state = jvs.JVS(args.serial_device, dump=args.dump)
 if args.verbose > 1:
 	print("Opened device %s" % jvs_state.ser.name)
 
@@ -58,8 +56,8 @@ if args.verbose > 0:
 		print
 
 # create the uinput device
+# TODO: generate this based on capability data
 events = (
-	        uinput.BTN_JOYSTICK,
     	    uinput.ABS_X + (0, 2, 0, 0),
         	uinput.ABS_Y + (0, 2, 0, 0),
 			uinput.BTN_1,
@@ -79,23 +77,26 @@ uinput_device = uinput.Device(events, name='openjvs')
 status_str = ''
 old_length = 0
 old_sw = None
-# TODO: read out all info
+# TODO: read out all switch data
 try:
 	while True:
 		for device in jvs_state.devices:
 			if 'switches' in device.capabilities:
-				sw = jvs_state.read_switches(device.address, device.capabilities['switches']['players'])
-				if old_sw != None:
+				try:
+					sw = jvs_state.read_switches(device.address, device.capabilities['switches']['players'])
 					uinput_device.emit(uinput.ABS_X, 1 + sw[1]['right'] - sw[1]['left'], syn=False)
 					uinput_device.emit(uinput.ABS_Y, 1 + sw[1]['down'] - sw[1]['up'], syn=False)
 					for swnum in range(1, 9):
-						if old_sw[1]['push%d' % swnum] != sw[1]['push%d' % swnum]:
+						if (old_sw == None) or (old_sw[1]['push%d' % swnum] != sw[1]['push%d' % swnum]):
 							if sw[1]['push%d' % swnum]:
 								uinput_device.emit(uinput.__dict__['BTN_%d' % swnum], 1, syn=False)
 							else:
 								uinput_device.emit(uinput.__dict__['BTN_%d' % swnum], 0, syn=False)
 					uinput_device.syn()	# fire all events
-				old_sw = sw
+					old_sw = sw
+				except jvs.TimeoutError:
+					if args.verbose > 0:
+						print 'Timeout occurred while reading switches'
 except:
 	jvs_state.ser.close()
 	print "Shutting down."
