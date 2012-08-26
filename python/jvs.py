@@ -68,27 +68,27 @@ def bcd2num(bcd):
 
 class JVS:
 	"""Basic JVS object encapsulating all state involved in a JVS connection"""
-	def __init__(self, port, debug = False):
+	def __init__(self, port, dump = False):
 		"""Initializes the JVS connection. Doesn't cause a bus reset or device enumeration to take place"""
 		self.ser = serial.Serial(port=port, baudrate=115200, timeout=5)	# initialize serial connection
 
 		# initialize internal state
 		self.devices = []
 
-		if debug:
-			self.debug = True
-			self.debug_file = open(time.strftime('openjvs_dump_%Y-%m-%d_%H:%M:%S.log'), 'w')
+		if dump:
+			self.dump = True
+			self.dump_file = open(time.strftime('openjvs_dump_%Y-%m-%d_%H:%M:%S.log'), 'w')
 			self.prev_byte_received = True	# first byte will probably be sent so this causes it to dump a header first thing
 
 	def read_byte(self):
 		"""Read a single byte, with no framing whatsoever. Used internally to read in a packet."""
 		byte = self.ser.read(1)
 
-		if self.debug:
+		if self.dump:
 			if byte == SYNC or self.prev_byte_received == False:
-				self.debug_file.write('\nread %s: %X' % (time.strftime(DEBUG_TIME_FORMAT), byte))
+				self.dump_file.write('\nread %s: %X' % (time.strftime(DEBUG_TIME_FORMAT), byte))
 			else:
-				self.debug_file.write(' %X' % byte)
+				self.dump_file.write(' %X' % byte)
 			self.prev_byte_received = False
 
 		if len(byte) == 0:
@@ -100,11 +100,11 @@ class JVS:
 		"""Write out a single byte with no framing. Used internally to write out a packet."""
 		self.ser.write(chr(byte))
 
-		if self.debug:
+		if self.dump:
 			if byte == SYNC or self.prev_byte_received == True:
-				self.debug_file.write('\nwrite %s: %X' % (time.strftime(DEBUG_TIME_FORMAT), byte))
+				self.dump_file.write('\nwrite %s: %X' % (time.strftime(DEBUG_TIME_FORMAT), byte))
 			else:
-				self.debug_file.write(' %X' % byte)
+				self.dump_file.write(' %X' % byte)
 			self.prev_byte_received = False
 
 	def read_packet(self):
