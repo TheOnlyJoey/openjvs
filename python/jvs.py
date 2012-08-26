@@ -61,7 +61,7 @@ class Device:
 		self.capabilities	= capabilities
 
 def bcd2num(bcd):
-	"""Converts the packed dual-BCD version numbers from the protocol into a fractional value."""
+	"""Converts the packed dual-BCD version numbers from the protocol into a fractional value; e.g. 0x12 to 1.2."""
 	return ((bcd & 0xF0) >> 4) + ((bcd & 0x0F) * 0.1)
 
 class JVS:
