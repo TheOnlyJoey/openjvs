@@ -9,6 +9,8 @@ import serial
 import time
 from jvs_constants import *	# haters gonna hate
 
+DEBUG_TIME_FORMAT = '%Y-%m-%d, %H:%M:%S'
+
 # exceptions
 class Error(Exception):
 	"""Base class for JVS exceptions."""
@@ -66,24 +68,44 @@ def bcd2num(bcd):
 
 class JVS:
 	"""Basic JVS object encapsulating all state involved in a JVS connection"""
-	def __init__(self, port):
+	def __init__(self, port, debug = False):
 		"""Initializes the JVS connection. Doesn't cause a bus reset or device enumeration to take place"""
 		self.ser = serial.Serial(port=port, baudrate=115200, timeout=5)	# initialize serial connection
 
 		# initialize internal state
 		self.devices = []
 
+		if debug:
+			self.debug = True
+			self.debug_file = open(time.strftime('openjvs_dump_%Y-%m-%d_%H:%M:%S.log'), 'w')
+			self.prev_byte_received = True	# first byte will probably be sent so this causes it to dump a header first thing
+
 	def read_byte(self):
 		"""Read a single byte, with no framing whatsoever. Used internally to read in a packet."""
 		byte = self.ser.read(1)
+
+		if self.debug:
+			if byte == SYNC or self.prev_byte_received == False:
+				self.debug_file.write('\nread %s: %X' % (time.strftime(DEBUG_TIME_FORMAT), byte))
+			else:
+				self.debug_file.write(' %X' % byte)
+			self.prev_byte_received = False
+
 		if len(byte) == 0:
 			raise TimeoutError()	# read timed out
 		else:
-			return ord(byte)			# return byte as number
+			return ord(byte)		# return byte as number
 
 	def write_byte(self, byte):
 		"""Write out a single byte with no framing. Used internally to write out a packet."""
 		self.ser.write(chr(byte))
+
+		if self.debug:
+			if byte == SYNC or self.prev_byte_received == True:
+				self.debug_file.write('\nwrite %s: %X' % (time.strftime(DEBUG_TIME_FORMAT), byte))
+			else:
+				self.debug_file.write(' %X' % byte)
+			self.prev_byte_received = False
 
 	def read_packet(self):
 		"""Reads a full packet from the bus. Returns a Packet instance or throws TimeoutError."""
@@ -229,9 +251,9 @@ class JVS:
 
 		ret = [ ]
 		ret.append({	 'test':bool(data[0] & BTN_GENERAL_TEST),
-					'tilt1':bool(data[0] & BTN_GENERAL_TILT1),
-					'tilt2':bool(data[0] & BTN_GENERAL_TILT2),
-					'tilt3':bool(data[0] & BTN_GENERAL_TILT3) })
+						'tilt1':bool(data[0] & BTN_GENERAL_TILT1),
+						'tilt2':bool(data[0] & BTN_GENERAL_TILT2),
+						'tilt3':bool(data[0] & BTN_GENERAL_TILT3) })
 
 		for player in range(0, num_players):
 			ret.append({	  'start':bool(data[player*2+1] & BTN_PLAYER_START),
