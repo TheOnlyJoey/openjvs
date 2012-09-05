@@ -79,6 +79,8 @@ class JVS:
 			self.dump = True
 			self.dump_file = open(time.strftime('openjvs_dump_%Y-%m-%d_%H:%M:%S.log'), 'w')
 			self.prev_byte_received = True	# first byte will probably be sent so this causes it to dump a header first thing
+		else:
+			self.dump = False
 
 	def read_byte(self):
 		"""Read a single byte, with no framing whatsoever. Used internally to read in a packet."""
@@ -86,10 +88,10 @@ class JVS:
 
 		if self.dump:
 			if byte == SYNC or self.prev_byte_received == False:
-				self.dump_file.write('\nread %s: %X' % (time.strftime(DEBUG_TIME_FORMAT), byte))
+				self.dump_file.write('\nread %s: %X' % (time.strftime(DEBUG_TIME_FORMAT), ord(byte)))
 			else:
-				self.dump_file.write(' %X' % byte)
-			self.prev_byte_received = False
+				self.dump_file.write(' %X' % ord(byte))
+			self.prev_byte_received = True
 
 		if len(byte) == 0:
 			raise TimeoutError()	# read timed out

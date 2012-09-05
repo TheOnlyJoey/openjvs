@@ -84,7 +84,7 @@ try:
 			if 'switches' in device.capabilities:
 				try:
 					sw = jvs_state.read_switches(device.address, device.capabilities['switches']['players'])
-					uinput_device.emit(uinput.ABS_X, 1 + sw[1]['right'] - sw[1]['left'], syn=False)
+					uinput_device.emit(uinput.ABS_X, 1 + sw[1]['left'] - sw[1]['right'], syn=False)
 					uinput_device.emit(uinput.ABS_Y, 1 + sw[1]['down'] - sw[1]['up'], syn=False)
 					for swnum in range(1, 9):
 						if (old_sw == None) or (old_sw[1]['push%d' % swnum] != sw[1]['push%d' % swnum]):
