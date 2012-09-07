@@ -73,11 +73,11 @@ for device in jvs_state.devices:
 			print("\t\t\t- %s: %s" % (cap_key, repr(cap_args)))
 		print
 
-	# create an uinput device for each player within each capable bus device
+	# create a system uinput device, and a uinput device for each player, within each capable bus device
 	if 'switches' in device.capabilities:
-		device.uinput_devices = [ ]
+		device.uinput_devices = [ uinput.Device(events[2:5], name='openjvs_a%dsys' % device.addr) ]	# add system device, for TEST and TILT switches
 		for player in range(0, device.capabilities['switches']['players']):
-			device.uinput_devices.append(uinput.Device(events[0:2+device.capabilities['switches']['switches']-4], name='openjvs_a%dp%d' % (device.addr, player)))
+			device.uinput_devices.append(uinput.Device(events[0:2+device.capabilities['switches']['switches']-4], name='openjvs_a%dp%d' % (device.addr, player)))	# add player device
 			if args.verbose > 1:
 				print "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.addr, player, player)
 		if args.verbose > 1:
@@ -94,15 +94,32 @@ try:
 			if 'switches' in device.capabilities:
 				try:
 					sw = jvs_state.read_switches(device.address, device.capabilities['switches']['players'])
+
+					# read out system switches
+					for (swnum, swid) in enumerate([ 'test', 'tilt1', 'tilt2', 'tilt3' ]):
+						# check to emit initial event or event on switch status change
+						if (old_sw == None) or (old_sw[0][swid] != sw[0][swid]):
+							btnid = uinput.__dict__['BTN_%d' % swnum]
+
+							if sw[player][swid]:
+								device.uinput_devices[0].emit(btnid, 1, syn=False)
+							else:
+								device.uinput_devices[0].emit(btnid, 0, syn=False)
+
+					# read out player switches
 					for player in range(1, device.capabilities['switches']['players']+1):
 						device.uinput_devices[player].emit(uinput.ABS_X, 1 + sw[player]['left'] - sw[player]['right'], syn=False)
 						device.uinput_devices[player].emit(uinput.ABS_Y, 1 + sw[player]['down'] - sw[player]['up'], syn=False)
 						for swnum in range(1, device.capabilities['switches']['switches']-3):
-							if (old_sw == None) or (old_sw[player]['push%d' % swnum] != sw[player]['push%d' % swnum]):
-								if sw[player]['push%d' % swnum]:
-									device.uinput_devices[player].emit(uinput.__dict__['BTN_%d' % swnum], 1, syn=False)
+							swid  = 'push%d' % swnum
+							btnid = uinput.__dict__['BTN_%d' % swnum]
+
+							# check to emit initial event or event on switch status change
+							if (old_sw == None) or (old_sw[player][swid] != sw[player][swid]):
+								if sw[player][swid]:
+									device.uinput_devices[player].emit(btnid, 1, syn=False)
 								else:
-									device.uinput_devices[player].emit(uinput.__dict__['BTN_%d' % swnum], 0, syn=False)
+									device.uinput_devices[player].emit(btnid, 0, syn=False)
 						device.uinput_devices[player].syn()	# fire all events
 					old_sw = sw
 				except jvs.TimeoutError:
