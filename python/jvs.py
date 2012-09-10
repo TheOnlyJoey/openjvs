@@ -264,6 +264,7 @@ class JVS:
 							   'down':bool(data[player*2+1] & BTN_PLAYER_DOWN),
 							   'left':bool(data[player*2+1] & BTN_PLAYER_LEFT),
 							  'right':bool(data[player*2+1] & BTN_PLAYER_RIGHT),
+							  'start':bool(data[player*2+1] & BTN_PLAYER_START),
 							  'push1':bool(data[player*2+1] & BTN_PLAYER_PUSH1),
 							  'push2':bool(data[player*2+1] & BTN_PLAYER_PUSH2),
 
@@ -272,6 +273,7 @@ class JVS:
 							  'push5':bool(data[player*2+2] & BTN_PLAYER_PUSH5),
 							  'push6':bool(data[player*2+2] & BTN_PLAYER_PUSH6),
 							  'push7':bool(data[player*2+2] & BTN_PLAYER_PUSH7),
-							  'push8':bool(data[player*2+2] & BTN_PLAYER_PUSH8) })
+							  'push8':bool(data[player*2+2] & BTN_PLAYER_PUSH8),
+							  'push9':bool(data[player*2+2] & BTN_PLAYER_PUSH9)})
 
 		return ret
