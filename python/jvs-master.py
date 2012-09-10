@@ -75,11 +75,12 @@ for device in jvs_state.devices:
 
 	# create a system uinput device, and a uinput device for each player, within each capable bus device
 	if 'switches' in device.capabilities:
-		device.uinput_devices = [ uinput.Device(events[2:5], name='openjvs_a%dsys' % device.addr) ]	# add system device, for TEST and TILT switches
+		print dir(device)
+		device.uinput_devices = [ uinput.Device(events[2:5], name='openjvs_a%dsys' % device.address) ]	# add system device, for TEST and TILT switches
 		for player in range(0, device.capabilities['switches']['players']):
-			device.uinput_devices.append(uinput.Device(events[0:2+device.capabilities['switches']['switches']-4], name='openjvs_a%dp%d' % (device.addr, player)))	# add player device
+			device.uinput_devices.append(uinput.Device(events[0:2+device.capabilities['switches']['switches']-4], name='openjvs_a%dp%d' % (device.address, player)))	# add player device
 			if args.verbose > 1:
-				print "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.addr, player, player)
+				print "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.address, player, player)
 		if args.verbose > 1:
 			print
 
