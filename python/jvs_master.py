@@ -7,6 +7,7 @@ devices via the uinput kernel module.
 
 # imports
 import argparse
+import ConfigParser
 import jvs
 import uinput
 import sys
@@ -15,28 +16,11 @@ import traceback
 # parse arguments
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("-s", "--serial-device",  default="/dev/ttyUSB0", metavar="DEVICE", help="Use device DEVICE as a JVS connection")
+parser.add_argument("-c", "--config", dest="config_filename", default="jvs_master.cfg", metavar="FILENAME", help="use file FILENAME as config file")
 parser.add_argument("--assume-devices", type=int, default=None, metavar="N", help="If given, skip regular address setting procedure and assume N devices connected.")
 parser.add_argument("-v", dest="verbose", action="count", help="Enter verbose mode, which shows more information on the bus traffic. Use more than once for more output.")
 parser.add_argument("-d", "--dump", action="store_true", default=False, help="Store raw sent/received data in a dump file named openjvs_dump_<date>_<time>.log.")
 args = parser.parse_args()
-
-if args.verbose > 0:
-	print("Starting up...")
-
-if args.verbose > 1:
-	print("Initializing JVS state")
-jvs_state = jvs.JVS(args.serial_device, dump=args.dump)
-if args.verbose > 1:
-	print("Opened device %s" % jvs_state.ser.name)
-
-if args.verbose > 1:
-	print("Resetting bus, assigning address, identifying device")
-jvs_state.reset(args.assume_devices)
-
-# print a bunch of data
-id_meanings = [ 'Manufacturer', 'Product name', 'Serial number', 'Product version', 'Comment' ]
-if args.verbose > 0:
-	print("Devices:")
 
 # all possible events
 events = (
@@ -52,6 +36,59 @@ events = (
 		uinput.BTN_8,
 		uinput.BTN_START
 	)
+
+if args.verbose > 0:
+	print("Starting up...")
+
+if args.verbose > 2:
+	print("Reading in config file %s" % config_filename)
+
+# read in config
+cfg = ConfigParser.ConfigParser()
+cfg.read(args.config_filename)
+
+joystick_map = {}
+devicenum = 0
+playernum = 0
+
+for section in cfg.sections():
+	if section.startswith('device'):
+		devicenum = int(section[len('player'):])
+		joystick_map[devicenum] = { }
+
+	if section.startswith('player'):
+		playernum = int(section[len('player'):])
+		joystick_map[devicenum][playernum] = [ ]
+		for event in cfg.options(section):
+			keylist = cfg.get(section, event).split()
+
+			# button event
+			if event.startswith('btn_'):
+				joystick_map[devicenum][playernum].append(('button', uinput.__dict__[event.upper()], keylist))
+
+			# axis event
+			elif event.startswith('abs_'):
+				joystick_map[devicenum][playernum].append(('axis', uinput.__dict__[event.upper()], keylist[0], keylist[1]))
+
+			else:
+				raise ValueError
+
+print joystick_map
+
+if args.verbose > 1:
+	print("Initializing JVS state")
+jvs_state = jvs.JVS(args.serial_device, dump=args.dump)
+if args.verbose > 1:
+	print("Opened device %s" % jvs_state.ser.name)
+
+if args.verbose > 1:
+	print("Resetting bus, assigning address, identifying device")
+jvs_state.reset(args.assume_devices)
+
+# print a bunch of data
+id_meanings = [ 'Manufacturer', 'Product name', 'Serial number', 'Product version', 'Comment' ]
+if args.verbose > 0:
+	print("Devices:")
 
 for device in jvs_state.devices:
 	# dump data about device
@@ -98,39 +135,25 @@ try:
 			if 'switches' in device.capabilities:
 				try:
 					sw = jvs_state.read_switches(device.address, device.capabilities['switches']['players'])
-					print "sw"
-					print sw
+					if device.address in joystick_map:
+						for player_id in range(0, device.capabilities['switches']['players']+1):
+							if player_id in joystick_map[device.address]:
+								for map_entry in joystick_map[devicenum][playernum]:
+									if map_entry[0] == 'button':
+										for swid in map_entry[2]:
+											if (old_sw == None) or (old_sw[player_id][swid] != sw[player_id][swid]):
+												if sw[player_id][swid]:
+													print "button GET"
+													device.uinput_devices[0].emit(map_entry[1], 1, syn=False)
+												else:
+													device.uinput_devices[0].emit(map_entry[1], 0, syn=False)
 
-					# read out system switches
-					for (swnum, swid) in enumerate([ 'test', 'tilt1', 'tilt2', 'tilt3' ]):
-						# check to emit initial event or event on switch status change
-						if (old_sw == None) or (old_sw[0][swid] != sw[0][swid]):
-							btnid = uinput.__dict__['BTN_%d' % swnum]
+									elif map_entry[0] == 'axis':
+										device.uinput_devices[player].emit(map_entry[1], 1 + sw[player_id][map_entry[2]] - sw[player_id][map_entry[3]], syn=False)
 
-							if sw[0][swid]:
-								device.uinput_devices[0].emit(btnid, 1, syn=False)
-							else:
-								device.uinput_devices[0].emit(btnid, 0, syn=False)
-
-					# read out player switches
-					for player in range(1, device.capabilities['switches']['players']+1):
-						device.uinput_devices[player].emit(uinput.ABS_X, 1 + sw[player]['left'] - sw[player]['right'], syn=False)
-						device.uinput_devices[player].emit(uinput.ABS_Y, 1 + sw[player]['up'] - sw[player]['down'], syn=False)
-						if sw[player]['start']:
-							device.uinput_devices[player].emit(uinput.BTN_START, 1, syn=False)
-						else:
-							device.uinput_devices[player].emit(uinput.BTN_START, 0, syn=False)
-						for swnum in range(1, device.capabilities['switches']['switches']-3):
-							swid  = 'push%d' % swnum
-							btnid = uinput.__dict__['BTN_%d' % swnum]
-
-							# check to emit initial event or event on switch status change
-							if (old_sw == None) or (old_sw[player][swid] != sw[player][swid]):
-								if sw[player][swid]:
-									device.uinput_devices[player].emit(btnid, 1, syn=False)
-								else:
-									device.uinput_devices[player].emit(btnid, 0, syn=False)
-						device.uinput_devices[player].syn()	# fire all events
+									else:
+										raise ValueError
+					device.uinput_devices[player].syn()	# fire all events
 					old_sw = sw
 				except jvs.TimeoutError:
 					if args.verbose > 0:
