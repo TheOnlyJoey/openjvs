@@ -9,6 +9,8 @@ devices via the uinput kernel module.
 import argparse
 import jvs
 import uinput
+import sys
+import traceback
 
 # parse arguments
 parser = argparse.ArgumentParser(description=__doc__)
@@ -47,7 +49,8 @@ events = (
 		uinput.BTN_5,
 		uinput.BTN_6,
 		uinput.BTN_7,
-		uinput.BTN_8
+		uinput.BTN_8,
+		uinput.BTN_START
 	)
 
 for device in jvs_state.devices:
@@ -75,11 +78,12 @@ for device in jvs_state.devices:
 
 	# create a system uinput device, and a uinput device for each player, within each capable bus device
 	if 'switches' in device.capabilities:
-		device.uinput_devices = [ uinput.Device(events[2:5], name='openjvs_a%dsys' % device.addr) ]	# add system device, for TEST and TILT switches
+		print dir(device)
+		device.uinput_devices = [ uinput.Device(events[2:5], name='openjvs_a%dsys' % device.address) ]	# add system device, for TEST and TILT switches
 		for player in range(0, device.capabilities['switches']['players']):
-			device.uinput_devices.append(uinput.Device(events[0:2+device.capabilities['switches']['switches']-4], name='openjvs_a%dp%d' % (device.addr, player)))	# add player device
+			device.uinput_devices.append(uinput.Device(events[0:2+device.capabilities['switches']['switches']-4], name='openjvs_a%dp%d' % (device.address, player)))	# add player device
 			if args.verbose > 1:
-				print "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.addr, player, player)
+				print "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.address, player, player)
 		if args.verbose > 1:
 			print
 
@@ -94,6 +98,8 @@ try:
 			if 'switches' in device.capabilities:
 				try:
 					sw = jvs_state.read_switches(device.address, device.capabilities['switches']['players'])
+					print "sw"
+					print sw
 
 					# read out system switches
 					for (swnum, swid) in enumerate([ 'test', 'tilt1', 'tilt2', 'tilt3' ]):
@@ -101,7 +107,7 @@ try:
 						if (old_sw == None) or (old_sw[0][swid] != sw[0][swid]):
 							btnid = uinput.__dict__['BTN_%d' % swnum]
 
-							if sw[player][swid]:
+							if sw[0][swid]:
 								device.uinput_devices[0].emit(btnid, 1, syn=False)
 							else:
 								device.uinput_devices[0].emit(btnid, 0, syn=False)
@@ -109,7 +115,11 @@ try:
 					# read out player switches
 					for player in range(1, device.capabilities['switches']['players']+1):
 						device.uinput_devices[player].emit(uinput.ABS_X, 1 + sw[player]['left'] - sw[player]['right'], syn=False)
-						device.uinput_devices[player].emit(uinput.ABS_Y, 1 + sw[player]['down'] - sw[player]['up'], syn=False)
+						device.uinput_devices[player].emit(uinput.ABS_Y, 1 + sw[player]['up'] - sw[player]['down'], syn=False)
+						if sw[player]['start']:
+							device.uinput_devices[player].emit(uinput.BTN_START, 1, syn=False)
+						else:
+							device.uinput_devices[player].emit(uinput.BTN_START, 0, syn=False)
 						for swnum in range(1, device.capabilities['switches']['switches']-3):
 							swid  = 'push%d' % swnum
 							btnid = uinput.__dict__['BTN_%d' % swnum]
@@ -126,5 +136,8 @@ try:
 					if args.verbose > 0:
 						print 'Timeout occurred while reading switches.'
 except:
+	print sys.exc_info()[0]
+	print sys.exc_info()[1]
+	print traceback.print_tb(sys.exc_info()[2])
 	jvs_state.ser.close()
 	print "Shutting down."

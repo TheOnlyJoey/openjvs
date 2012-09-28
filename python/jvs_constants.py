@@ -105,6 +105,7 @@ BTN_PLAYER_PUSH5	= 1 << 5
 BTN_PLAYER_PUSH6	= 1 << 4
 BTN_PLAYER_PUSH7	= 1 << 3
 BTN_PLAYER_PUSH8	= 1 << 2
+BTN_PLAYER_PUSH9	= 1 << 1
 
 
 # timing data for the bus, in seconds
