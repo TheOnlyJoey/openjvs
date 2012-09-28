@@ -41,7 +41,7 @@ if args.verbose > 0:
 	print("Starting up...")
 
 if args.verbose > 2:
-	print("Reading in config file %s" % config_filename)
+	print("Reading in config file %s" % args.config_filename)
 
 # read in config
 cfg = ConfigParser.ConfigParser()
@@ -143,17 +143,16 @@ try:
 										for swid in map_entry[2]:
 											if (old_sw == None) or (old_sw[player_id][swid] != sw[player_id][swid]):
 												if sw[player_id][swid]:
-													print "button GET"
-													device.uinput_devices[0].emit(map_entry[1], 1, syn=False)
+													device.uinput_devices[player_id].emit(map_entry[1], 1, syn=False)
 												else:
-													device.uinput_devices[0].emit(map_entry[1], 0, syn=False)
+													device.uinput_devices[player_id].emit(map_entry[1], 0, syn=False)
 
-									elif map_entry[0] == 'axis':
-										device.uinput_devices[player].emit(map_entry[1], 1 + sw[player_id][map_entry[2]] - sw[player_id][map_entry[3]], syn=False)
+									elif map_entry[0] == 'axis': 
+										device.uinput_devices[player_id].emit(map_entry[1], 1 + sw[player_id][map_entry[2]] - sw[player_id][map_entry[3]], syn=False)
 
 									else:
 										raise ValueError
-					device.uinput_devices[player].syn()	# fire all events
+					device.uinput_devices[player_id].syn()	# fire all events
 					old_sw = sw
 				except jvs.TimeoutError:
 					if args.verbose > 0:
