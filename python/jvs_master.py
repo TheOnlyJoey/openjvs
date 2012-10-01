@@ -14,6 +14,11 @@ import sys
 import traceback
 import signal
 
+def verbose(level, message):
+	global args
+	if args.verbose >= level:
+		print(message)
+
 # parse arguments
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("-s", "--serial-device",  default="/dev/ttyUSB0", metavar="DEVICE", help="Use device DEVICE as a JVS connection")
@@ -38,13 +43,11 @@ events = (
 		uinput.BTN_START
 	)
 
-if args.verbose > 0:
-	print("Starting up...")
+verbose(1, "Starting up...")
+verbose(2, "Reading in config file %s" % args.config_filename)
 
-if args.verbose > 2:
-	print("Reading in config file %s" % args.config_filename)
 
-# read in config
+# read in config file
 cfg = ConfigParser.ConfigParser()
 cfg.read(args.config_filename)
 
@@ -74,26 +77,23 @@ for section in cfg.sections():
 			else:
 				raise ValueError
 
-print joystick_map
 
-if args.verbose > 1:
-	print("Initializing JVS state")
+verbose(1, "Initializing JVS")
+verbose(2, "Opened device %s" % jvs_state.ser.name)
 jvs_state = jvs.JVS(args.serial_device, dump=args.dump)
-if args.verbose > 1:
-	print("Opened device %s" % jvs_state.ser.name)
 
-if args.verbose > 1:
-	print("Resetting bus, assigning address, identifying device")
+verbose(2, "Resetting bus, assigning address, identifying device")
 jvs_state.reset(args.assume_devices)
 
-# print a bunch of data
+
+# device list
 id_meanings = [ 'Manufacturer', 'Product name', 'Serial number', 'Product version', 'Comment' ]
-if args.verbose > 0:
-	print("Devices:")
+
+verbose(3, "Devices:")
 
 for device in jvs_state.devices:
 	# dump data about device
-	if args.verbose > 1:
+	if args.verbose >= 3:
 		print("\t- Address %d:" % device.address)
 
 		# id data
@@ -116,29 +116,33 @@ for device in jvs_state.devices:
 
 	# create a system uinput device, and a uinput device for each player, within each capable bus device
 	if 'switches' in device.capabilities:
-		print dir(device)
 		device.uinput_devices = [ uinput.Device(events[2:5], name='openjvs_a%dsys' % device.address) ]	# add system device, for TEST and TILT switches
 		for player in range(0, device.capabilities['switches']['players']):
 			device.uinput_devices.append(uinput.Device(events[0:2+device.capabilities['switches']['switches']-4], name='openjvs_a%dp%d' % (device.address, player)))	# add player device
-			if args.verbose > 1:
-				print "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.address, player, player)
-		if args.verbose > 1:
-			print
+			verbose(3, "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.address, player, player))
 
-# read out switches
+		verbose(3, "")	# empty line
+
+
+# for reading out switches
 status_str = ''
 old_length = 0
 old_sw = None
+
 
 # hook SIGTERM to exit gracefully
 do_exit = False
 def cleanup_handler(signal, frame):
 	global do_exit
-	print "Shutting down."
+	verbose(1, "Shutting down.")
 	do_exit = True
 
 signal.signal(signal.SIGINT,  cleanup_handler)
 signal.signal(signal.SIGTERM, cleanup_handler)
+
+
+# main loop
+verbose(1, "Entering main loop...")
 
 while not do_exit:
 	for device in jvs_state.devices:
@@ -162,8 +166,8 @@ while not do_exit:
 
 								else:
 									raise ValueError
+
 				device.uinput_devices[player_id].syn()	# fire all events
 				old_sw = sw
 			except jvs.TimeoutError:
-				if args.verbose > 0:
-					print 'Timeout occurred while reading switches.'
+				verbose(2, "Timeout occurred while reading switches.")
