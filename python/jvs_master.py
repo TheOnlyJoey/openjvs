@@ -25,7 +25,8 @@ parser.add_argument("-s", "--serial-device",  default="/dev/ttyUSB0", metavar="D
 parser.add_argument("-c", "--config", dest="config_filename", default="jvs_master.cfg", metavar="FILENAME", help="use file FILENAME as config file")
 parser.add_argument("--assume-devices", type=int, default=None, metavar="N", help="If given, skip regular address setting procedure and assume N devices connected.")
 parser.add_argument("-v", dest="verbose", action="count", help="Enter verbose mode, which shows more information on the bus traffic. Use more than once for more output.")
-parser.add_argument("-d", "--dump", action="store_true", default=False, help="Store raw sent/received data in a dump file named openjvs_dump_<date>_<time>.log.")
+parser.add_argument("-d", "--debug", dest="verbose", action='store_const', const=5, help="Turns verbosity all the way up to maximum, as a debugging aid.")
+parser.add_argument("--dump", action="store_true", default=False, help="Store raw sent/received data in a dump file named openjvs_dump_<date>_<time>.log.")
 args = parser.parse_args()
 
 # all possible events
