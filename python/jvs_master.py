@@ -12,6 +12,7 @@ import jvs
 import uinput
 import sys
 import traceback
+import signal
 
 # parse arguments
 parser = argparse.ArgumentParser(description=__doc__)
