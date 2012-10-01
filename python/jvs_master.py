@@ -45,10 +45,10 @@ events = (
 	)
 
 verbose(1, "Starting up...")
-verbose(2, "Reading in config file %s" % args.config_filename)
 
 
 # read in config file
+verbose(2, "Reading in config file %s" % args.config_filename)
 cfg = ConfigParser.ConfigParser()
 cfg.read(args.config_filename)
 
@@ -80,8 +80,8 @@ for section in cfg.sections():
 
 
 verbose(1, "Initializing JVS")
-verbose(2, "Opened device %s" % jvs_state.ser.name)
 jvs_state = jvs.JVS(args.serial_device, dump=args.dump)
+verbose(2, "Opened device %s" % jvs_state.ser.name)
 
 verbose(2, "Resetting bus, assigning address, identifying device")
 jvs_state.reset(args.assume_devices)
