@@ -129,37 +129,40 @@ status_str = ''
 old_length = 0
 old_sw = None
 
-try:
-	while True:
-		for device in jvs_state.devices:
-			if 'switches' in device.capabilities:
-				try:
-					sw = jvs_state.read_switches(device.address, device.capabilities['switches']['players'])
-					if device.address in joystick_map:
-						for player_id in range(0, device.capabilities['switches']['players']+1):
-							if player_id in joystick_map[device.address]:
-								for map_entry in joystick_map[devicenum][playernum]:
-									if map_entry[0] == 'button':
-										for swid in map_entry[2]:
-											if (old_sw == None) or (old_sw[player_id][swid] != sw[player_id][swid]):
-												if sw[player_id][swid]:
-													device.uinput_devices[player_id].emit(map_entry[1], 1, syn=False)
-												else:
-													device.uinput_devices[player_id].emit(map_entry[1], 0, syn=False)
-
-									elif map_entry[0] == 'axis': 
-										device.uinput_devices[player_id].emit(map_entry[1], 1 + sw[player_id][map_entry[2]] - sw[player_id][map_entry[3]], syn=False)
-
-									else:
-										raise ValueError
-					device.uinput_devices[player_id].syn()	# fire all events
-					old_sw = sw
-				except jvs.TimeoutError:
-					if args.verbose > 0:
-						print 'Timeout occurred while reading switches.'
-except:
-	print sys.exc_info()[0]
-	print sys.exc_info()[1]
-	print traceback.print_tb(sys.exc_info()[2])
-	jvs_state.ser.close()
+# hook SIGTERM to exit gracefully
+do_exit = False
+def cleanup_handler(signal, frame):
+	global do_exit
 	print "Shutting down."
+	do_exit = True
+
+signal.signal(signal.SIGINT,  cleanup_handler)
+signal.signal(signal.SIGTERM, cleanup_handler)
+
+while not do_exit:
+	for device in jvs_state.devices:
+		if 'switches' in device.capabilities:
+			try:
+				sw = jvs_state.read_switches(device.address, device.capabilities['switches']['players'])
+				if device.address in joystick_map:
+					for player_id in range(0, device.capabilities['switches']['players']+1):
+						if player_id in joystick_map[device.address]:
+							for map_entry in joystick_map[devicenum][playernum]:
+								if map_entry[0] == 'button':
+									for swid in map_entry[2]:
+										if (old_sw == None) or (old_sw[player_id][swid] != sw[player_id][swid]):
+											if sw[player_id][swid]:
+												device.uinput_devices[player_id].emit(map_entry[1], 1, syn=False)
+											else:
+												device.uinput_devices[player_id].emit(map_entry[1], 0, syn=False)
+
+								elif map_entry[0] == 'axis': 
+									device.uinput_devices[player_id].emit(map_entry[1], 1 + sw[player_id][map_entry[2]] - sw[player_id][map_entry[3]], syn=False)
+
+								else:
+									raise ValueError
+				device.uinput_devices[player_id].syn()	# fire all events
+				old_sw = sw
+			except jvs.TimeoutError:
+				if args.verbose > 0:
+					print 'Timeout occurred while reading switches.'
