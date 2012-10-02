@@ -23,25 +23,13 @@ parser.add_argument("-d", "--dump", action="store_true", default=False, help="St
 args = parser.parse_args()
 
 # all possible events
-events = (
-		uinput.ABS_X + (0, 2, 0, 0),
-		uinput.ABS_Y + (0, 2, 0, 0),
-		uinput.BTN_1,
-		uinput.BTN_2,
-		uinput.BTN_3,
-		uinput.BTN_4,
-		uinput.BTN_5,
-		uinput.BTN_6,
-		uinput.BTN_7,
-		uinput.BTN_8,
-		uinput.BTN_START
-	)
+possible_events = {}
 
 if args.verbose > 0:
 	print("Starting up...")
 
 if args.verbose > 2:
-	print("Reading in config file %s" % config_filename)
+	print("Reading in config file %s" % args.config_filename)
 
 # read in config
 cfg = ConfigParser.ConfigParser()
@@ -54,10 +42,12 @@ playernum = 0
 for section in cfg.sections():
 	if section.startswith('device'):
 		devicenum = int(section[len('player'):])
+		possible_events[devicenum] = {}
 		joystick_map[devicenum] = { }
 
 	if section.startswith('player'):
 		playernum = int(section[len('player'):])
+		possible_events[devicenum][playernum] = [ ]
 		joystick_map[devicenum][playernum] = [ ]
 		for event in cfg.options(section):
 			keylist = cfg.get(section, event).split()
@@ -65,15 +55,21 @@ for section in cfg.sections():
 			# button event
 			if event.startswith('btn_'):
 				joystick_map[devicenum][playernum].append(('button', uinput.__dict__[event.upper()], keylist))
+				possible_events[devicenum][playernum].append(uinput.__dict__[event.upper()])
 
 			# axis event
 			elif event.startswith('abs_'):
 				joystick_map[devicenum][playernum].append(('axis', uinput.__dict__[event.upper()], keylist[0], keylist[1]))
+				possible_events[devicenum][playernum].append(uinput.__dict__[event.upper()] + (0, 2, 0, 0))
+
+			elif event.startswith('key_'):
+				joystick_map[devicenum][playernum].append(('keyboard', uinput.__dict__[event.upper()], keylist))
+				possible_events[devicenum][playernum].append(uinput.__dict__[event.upper()])
 
 			else:
 				raise ValueError
 
-print joystick_map
+print possible_events
 
 if args.verbose > 1:
 	print("Initializing JVS state")
@@ -114,13 +110,15 @@ for device in jvs_state.devices:
 		print
 
 	# create a system uinput device, and a uinput device for each player, within each capable bus device
-	if 'switches' in device.capabilities:
-		print dir(device)
-		device.uinput_devices = [ uinput.Device(events[2:5], name='openjvs_a%dsys' % device.address) ]	# add system device, for TEST and TILT switches
-		for player in range(0, device.capabilities['switches']['players']):
-			device.uinput_devices.append(uinput.Device(events[0:2+device.capabilities['switches']['switches']-4], name='openjvs_a%dp%d' % (device.address, player)))	# add player device
-			if args.verbose > 1:
-				print "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.address, player, player)
+	if 'switches' in device.capabilities and device.address in possible_events:
+		device.uinput_devices = { }
+		if 0 in possible_events[device.address]:
+			device.uinput_devices[0] = uinput.Device(possible_events[device.address][0], name='openjvs_a%dsys' % device.address)		# add system device, for TEST and TILT switches
+		for player in range(1, device.capabilities['switches']['players']+1):
+			if player in possible_events[device.address]:
+				device.uinput_devices[player] = uinput.Device(possible_events[device.address][player], name='openjvs_a%dp%d' % (device.address, player))	# add player device
+				if args.verbose > 1:
+					print "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.address, player, player)
 		if args.verbose > 1:
 			print
 
@@ -143,17 +141,24 @@ try:
 										for swid in map_entry[2]:
 											if (old_sw == None) or (old_sw[player_id][swid] != sw[player_id][swid]):
 												if sw[player_id][swid]:
-													print "button GET"
-													device.uinput_devices[0].emit(map_entry[1], 1, syn=False)
+													device.uinput_devices[player_id].emit(map_entry[1], 1, syn=False)
 												else:
-													device.uinput_devices[0].emit(map_entry[1], 0, syn=False)
+													device.uinput_devices[player_id].emit(map_entry[1], 0, syn=False)
 
-									elif map_entry[0] == 'axis':
-										device.uinput_devices[player].emit(map_entry[1], 1 + sw[player_id][map_entry[2]] - sw[player_id][map_entry[3]], syn=False)
+									elif map_entry[0] == 'axis': 
+										device.uinput_devices[player_id].emit(map_entry[1], 1 + sw[player_id][map_entry[2]] - sw[player_id][map_entry[3]], syn=False)
+
+									elif map_entry[0] == 'keyboard':
+										for swid in map_entry[2]:
+											if (old_sw == None) or (old_sw[player_id][swid] != sw[player_id][swid]):
+												if sw[player_id][swid]:
+													device.uinput_devices[player_id].emit(map_entry[1], 1, syn=False)
+												else:
+													device.uinput_devices[player_id].emit(map_entry[1], 0, syn=False)
 
 									else:
 										raise ValueError
-					device.uinput_devices[player].syn()	# fire all events
+					device.uinput_devices[player_id].syn()	# fire all events
 					old_sw = sw
 				except jvs.TimeoutError:
 					if args.verbose > 0:
