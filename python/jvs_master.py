@@ -171,7 +171,7 @@ while not do_exit:
 
 								else:
 									raise ValueError
-				device.uinput_devices[player_id].syn()	# fire all events
+							device.uinput_devices[player_id].syn()	# fire all events
 				old_sw = sw
 			except jvs.TimeoutError:
 				verbose(2, "Timeout occurred while reading switches.")
