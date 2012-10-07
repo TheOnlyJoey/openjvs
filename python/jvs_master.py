@@ -15,8 +15,8 @@ import traceback
 import signal
 import time
 
-#import daemon
-#import lockfile
+import daemon
+import lockfile
 
 # dump a message to stdout if verbose option is high enough
 def verbose(level, message):
