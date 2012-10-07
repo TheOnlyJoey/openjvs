@@ -51,6 +51,7 @@ def read_config():
 
 	joystick_map = { }
 	possible_events = { }
+	keyboard_events = [ ]
 	devicenum = 0
 	playernum = 0
 
@@ -80,15 +81,15 @@ def read_config():
 				# keyboard event
 				elif event.startswith('key_'):
 					joystick_map[devicenum][playernum].append(('keyboard', uinput.__dict__[event.upper()], keylist))
-					possible_events[devicenum][playernum].append(uinput.__dict__[event.upper()])
+					keyboard_events.append(uinput.__dict__[event.upper()])
 
 				# complain if none of the above
 				else:
 					raise ValueError
 
-	return (cfg, joystick_map, possible_events)
+	return (cfg, joystick_map, possible_events, keyboard_events)
 
-def init_jvs(args, cfg, joystick_map, possible_events):
+def init_jvs(args, cfg, joystick_map, possible_events, keyboard_events):
 	verbose(1, "Initializing JVS")
 	jvs_state = jvs.JVS(args.serial_device, dump=args.dump)
 	verbose(2, "Opened device %s" % jvs_state.ser.name)
@@ -101,6 +102,8 @@ def init_jvs(args, cfg, joystick_map, possible_events):
 	id_meanings = [ 'Manufacturer', 'Product name', 'Serial number', 'Product version', 'Comment' ]
 
 	verbose(3, "Devices:")
+
+	jvs_state.keyboard_device = uinput.Device(keyboard_events), name='openjvs_keyboard')
 
 	for device in jvs_state.devices:
 		# dump data about device
@@ -181,9 +184,9 @@ def main_loop(jvs_state, cfg, joystick_map):
 										for swid in map_entry[2]:
 											if (old_sw == None) or (old_sw[player_id][swid] != sw[player_id][swid]):
 												if sw[player_id][swid]:
-													device.uinput_devices[player_id].emit(map_entry[1], 1, syn=False)
+													device.keyboard_device.emit(map_entry[1], 1, syn=False)
 												else:
-													device.uinput_devices[player_id].emit(map_entry[1], 0, syn=False)
+													device.keyboard_device.emit(map_entry[1], 0, syn=False)
 
 									else:
 										raise ValueError
