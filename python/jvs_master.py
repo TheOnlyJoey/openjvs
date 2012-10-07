@@ -13,18 +13,21 @@ import uinput
 import sys
 import traceback
 import signal
-import daemon
-import lockfile
+import time
+
+#import daemon
+#import lockfile
 
 # dump a message to stdout if verbose option is high enough
 def verbose(level, message):
-	global args
+	global args, log_file
 	if args.verbose >= level:
-		print(message)
+		log_file.write(time.strftime('[%Y-%m-%d %H:%M:%S] ')+message+"\n")
+		log_file.flush()				# make sure we can see events in the file after they've happened
 
 # read in config file
 def read_config():
-	global args
+	global args, log_file
 	parser = argparse.ArgumentParser(description=__doc__)
 	parser.add_argument('-s', '--serial-device',  default='/dev/ttyUSB0', metavar='DEVICE', help='Use device DEVICE as a JVS connection')
 	parser.add_argument('-c', '--config', dest='config_filename', default='jvs_master.cfg', metavar='FILENAME', help='use file FILENAME as config file')
@@ -32,8 +35,15 @@ def read_config():
 	parser.add_argument('-v', dest='verbose', action='count', help='Enter verbose mode, which shows more information on the bus traffic. Use more than once for more output.')
 	parser.add_argument('-d', '--debug', dest='verbose', action='store_const', const=5, help='Turns verbosity all the way up to maximum, as a debugging aid.')
 	parser.add_argument('--no-daemon', action='store_true', help='Do not fork away into a daemon process after initialization')
+	parser.add_argument('-l', '--log-file', metavar='FILE', help='Log to <FILE> instead of to stdout')
 	parser.add_argument('--dump', action='store_true', default=False, help='Store raw sent/received data in a dump file named openjvs_dump_<date>_<time>.log.')
 	args = parser.parse_args()
+
+	if args.log_file != None:
+		log_file = open(args.log_file, 'w')
+	else:
+		log_file = sys.stdout
+		
 
 	verbose(2, "Reading in config file %s" % args.config_filename)
 	cfg = ConfigParser.ConfigParser()
@@ -194,6 +204,8 @@ else:
 			signal.SIGTERM: cleanup_handler,
 			signal.SIGUSR1: cleanup_handler
 		}
+
+	context.files_preserve = [ log_file, jvs_state.ser ]
 
 	verbose(1, "Forking to background.")
 
