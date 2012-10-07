@@ -103,7 +103,7 @@ def init_jvs(args, cfg, joystick_map, possible_events, keyboard_events):
 
 	verbose(3, "Devices:")
 
-	jvs_state.keyboard_device = uinput.Device(keyboard_events), name='openjvs_keyboard')
+	jvs_state.keyboard_device = uinput.Device(keyboard_events, name='openjvs_keyboard')
 
 	for device in jvs_state.devices:
 		# dump data about device
@@ -196,10 +196,10 @@ def main_loop(jvs_state, cfg, joystick_map):
 					verbose(2, "Timeout occurred while reading switches.")
 
 # entrypoint
-(cfg, joystick_map, possible_events) = read_config()
+(cfg, joystick_map, possible_events, keyboard_events) = read_config()
 
 try:
-	jvs_state = init_jvs(args, cfg, joystick_map, possible_events)
+	jvs_state = init_jvs(args, cfg, joystick_map, possible_events, keyboard_events)
 	if args.no_daemon:
 		main_loop(jvs_state, cfg, joystick_map)
 	else:
