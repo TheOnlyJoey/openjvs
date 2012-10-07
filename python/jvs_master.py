@@ -22,7 +22,7 @@ import time
 def verbose(level, message):
 	global args, log_file
 	if args.verbose >= level:
-		log_file.write(time.strftime('[%Y-%m-%d %H:%M:%S] ')+message+"\n")
+		log_file.write("%s %d %s\n" % (time.strftime('[%Y-%m-%d %H:%M:%S]'), level, message))
 		log_file.flush()				# make sure we can see events in the file after they've happened
 
 # read in config file
@@ -194,20 +194,24 @@ def main_loop(jvs_state, cfg, joystick_map):
 
 # entrypoint
 (cfg, joystick_map, possible_events) = read_config()
-jvs_state = init_jvs(args, cfg, joystick_map, possible_events)
-if args.no_daemon:
-	main_loop(jvs_state, cfg, joystick_map)
-else:
-	context = daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/spam.pid'))
 
-	context.signal_map = {
-			signal.SIGTERM: cleanup_handler,
-			signal.SIGUSR1: cleanup_handler
-		}
-
-	context.files_preserve = [ log_file, jvs_state.ser ]
-
-	verbose(1, "Forking to background.")
-
-	with context:
+try:
+	jvs_state = init_jvs(args, cfg, joystick_map, possible_events)
+	if args.no_daemon:
 		main_loop(jvs_state, cfg, joystick_map)
+	else:
+		context = daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/spam.pid'))
+
+		context.signal_map = {
+				signal.SIGTERM: cleanup_handler,
+				signal.SIGUSR1: cleanup_handler
+			}
+
+		context.files_preserve = [ log_file, jvs_state.ser ]
+
+		verbose(1, "Forking to background.")
+
+		with context:
+			main_loop(jvs_state, cfg, joystick_map)
+except Exception as e:
+	verbose(0, "EXCEPTION: %s" % e)
