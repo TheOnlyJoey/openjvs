@@ -70,18 +70,18 @@ def read_config():
 
                 # button event
                 if event.startswith('btn_'):
-                    joystick_map[devicenum][playernum].append(('button', uinput.__dict__[event.upper()], keylist))
-                    possible_events[devicenum][playernum].append(uinput.__dict__[event.upper()])
+                    joystick_map[devicenum][playernum].append(('button', getattr(uinput, event.upper()), keylist))
+                    possible_events[devicenum][playernum].append(getattr(uinput, event.upper()))
 
                 # axis event
                 elif event.startswith('abs_'):
-                    joystick_map[devicenum][playernum].append(('axis', uinput.__dict__[event.upper()], keylist[0], keylist[1]))
-                    possible_events[devicenum][playernum].append(uinput.__dict__[event.upper()] + (0, 2, 0, 0))
+                    joystick_map[devicenum][playernum].append(('axis', getattr(uinput, event.upper()), keylist[0], keylist[1]))
+                    possible_events[devicenum][playernum].append(getattr(uinput, event.upper()) + (0, 2, 0, 0))
 
                 # keyboard event
                 elif event.startswith('key_'):
-                    joystick_map[devicenum][playernum].append(('keyboard', uinput.__dict__[event.upper()], keylist))
-                    keyboard_events.append(uinput.__dict__[event.upper()])
+                    joystick_map[devicenum][playernum].append(('keyboard', getattr(uinput, event.upper()), keylist))
+                    keyboard_events.append(getattr(uinput, event.upper()))
 
                 # complain if none of the above
                 else:
