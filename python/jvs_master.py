@@ -195,26 +195,27 @@ def main_loop(jvs_state, cfg, joystick_map):
                 except jvs.TimeoutError:
                     verbose(2, "Timeout occurred while reading switches.")
 
-# entrypoint
-(cfg, joystick_map, possible_events, keyboard_events) = read_config()
+# entrypoint; execute only when run directly
+if __name__ == '__main__':
+    (cfg, joystick_map, possible_events, keyboard_events) = read_config()
 
-try:
-    jvs_state = init_jvs(args, cfg, joystick_map, possible_events, keyboard_events)
-    if args.no_daemon:
-        main_loop(jvs_state, cfg, joystick_map)
-    else:
-        context = daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/spam.pid'))
-
-        context.signal_map = {
-                signal.SIGTERM: cleanup_handler,
-                signal.SIGUSR1: cleanup_handler
-            }
-
-        context.files_preserve = [ log_file, jvs_state.ser ]
-
-        verbose(1, "Forking to background.")
-
-        with context:
+    try:
+        jvs_state = init_jvs(args, cfg, joystick_map, possible_events, keyboard_events)
+        if args.no_daemon:
             main_loop(jvs_state, cfg, joystick_map)
-except Exception as e:
-    verbose(0, "EXCEPTION: %s" % e)
+        else:
+            context = daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/spam.pid'))
+
+            context.signal_map = {
+                    signal.SIGTERM: cleanup_handler,
+                    signal.SIGUSR1: cleanup_handler
+                }
+
+            context.files_preserve = [ log_file, jvs_state.ser ]
+
+            verbose(1, "Forking to background.")
+
+            with context:
+                main_loop(jvs_state, cfg, joystick_map)
+    except Exception as e:
+        verbose(0, "EXCEPTION: %s" % e)
