@@ -11,12 +11,13 @@ import ConfigParser
 import jvs
 import uinput
 import sys
+import os
 import traceback
 import signal
 import time
 
 import daemon
-import lockfile
+import daemon.pidlockfile
 
 # dump a message to stdout if verbose option is high enough
 def verbose(level, message):
@@ -30,6 +31,7 @@ def read_config():
 	global args, log_file
 	parser = argparse.ArgumentParser(description=__doc__)
 	parser.add_argument('-s', '--serial-device',  default='/dev/ttyUSB0', metavar='DEVICE', help='Use device DEVICE as a JVS connection')
+	parser.add_argument('-p', '--pid-file',  default='/var/run/openjvs.pid', metavar='FILE', help='Use file FILE as a PID-file to daemonise')
 	parser.add_argument('-c', '--config', dest='config_filename', default='jvs_master.cfg', metavar='FILENAME', help='use file FILENAME as config file')
 	parser.add_argument('--assume-devices', type=int, default=None, metavar='N', help='If given, skip regular address setting procedure and assume N devices connected.')
 	parser.add_argument('-v', dest='verbose', action='count', help='Enter verbose mode, which shows more information on the bus traffic. Use more than once for more output.')
@@ -203,18 +205,23 @@ try:
 	if args.no_daemon:
 		main_loop(jvs_state, cfg, joystick_map)
 	else:
-		context = daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/spam.pid'))
+		pidfile = daemon.pidlockfile.PIDLockFile(args.pid_file)
+		context = daemon.DaemonContext(pidfile=pidfile)
 
 		context.signal_map = {
 				signal.SIGTERM: cleanup_handler,
 				signal.SIGUSR1: cleanup_handler
 			}
 
-		context.files_preserve = [ log_file, jvs_state.ser ]
+		context.files_preserve = [ log_file, jvs_state.ser.fileno(), jvs_state.keyboard_device._Device__uinput_fd ]
+		for device in jvs_state.devices:
+			for udevice in device.uinput_devices.values():
+				verbose(3, "%s : %s" % (device, udevice));
+				context.files_preserve.append(udevice._Device__uinput_fd)
 
 		verbose(1, "Forking to background.")
 
 		with context:
 			main_loop(jvs_state, cfg, joystick_map)
 except Exception as e:
-	verbose(0, "EXCEPTION: %s" % e)
+	traceback.print_exc(None, log_file)
