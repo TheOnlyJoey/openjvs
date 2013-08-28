@@ -186,9 +186,9 @@ def main_loop(jvs_state, cfg, joystick_map):
 										for swid in map_entry[2]:
 											if (old_sw == None) or (old_sw[player_id][swid] != sw[player_id][swid]):
 												if sw[player_id][swid]:
-													device.keyboard_device.emit(map_entry[1], 1, syn=False)
+													jvs_state.keyboard_device.emit(map_entry[1], 1, syn=False)
 												else:
-													device.keyboard_device.emit(map_entry[1], 0, syn=False)
+													jvs_state.keyboard_device.emit(map_entry[1], 0, syn=False)
 
 									else:
 										raise ValueError
@@ -196,6 +196,7 @@ def main_loop(jvs_state, cfg, joystick_map):
 					old_sw = sw
 				except jvs.TimeoutError:
 					verbose(2, "Timeout occurred while reading switches.")
+		jvs_state.keyboard_device.syn()
 
 # entrypoint
 (cfg, joystick_map, possible_events, keyboard_events) = read_config()
