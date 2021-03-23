@@ -227,12 +227,11 @@ class JVS:
 			for device_addr in range(1, num_devices+1):
 				self.cmd(BROADCAST, [ CMD_ASSIGN_ADDR, device_addr ])
 				devlist.append(device_addr)
-				
 
 		# identify devices: request ID string, version numbers and capability struct
 		for device in devlist:
 			# make ID data from a list of bytes into a string, and then into a list of strings
-			id_data			= ''.join([ chr(b) for b in self.cmd(device, [ CMD_REQUEST_ID ])[:-1]]).split(';')
+			id_data			= ''.join([chr(b) for b in self.cmd(device, [ CMD_REQUEST_ID ])[:-1]]).split(';')
 
 			# the three version numbers
 			command_version	= bcd2num(self.cmd(device, [ CMD_COMMAND_VERSION	])[0])
