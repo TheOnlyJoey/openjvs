@@ -7,7 +7,7 @@ devices via the uinput kernel module.
 
 # imports
 import argparse
-import ConfigParser
+from configparser import ConfigParser
 import jvs
 import uinput
 import sys
@@ -17,14 +17,14 @@ import signal
 import time
 
 import daemon
-import daemon.pidlockfile
+import pidlockfile
 
 # dump a message to stdout if verbose option is high enough
 def verbose(level, message):
 	global args, log_file
-	if args.verbose >= level:
-		log_file.write("%s %d %s\n" % (time.strftime('[%Y-%m-%d %H:%M:%S]'), level, message))
-		log_file.flush()				# make sure we can see events in the file after they've happened
+	#if args.verbose >= level:
+	log_file.write("%s %d %s\n" % (time.strftime('[%Y-%m-%d %H:%M:%S]'), level, message))
+	log_file.flush()				# make sure we can see events in the file after they've happened
 
 # read in config file
 def read_config():
@@ -45,10 +45,9 @@ def read_config():
 		log_file = open(args.log_file, 'w')
 	else:
 		log_file = sys.stdout
-		
 
 	verbose(2, "Reading in config file %s" % args.config_filename)
-	cfg = ConfigParser.ConfigParser()
+	cfg = ConfigParser()
 	cfg.read(args.config_filename)
 
 	joystick_map = { }
@@ -109,38 +108,38 @@ def init_jvs(args, cfg, joystick_map, possible_events, keyboard_events):
 
 	for device in jvs_state.devices:
 		# dump data about device
-		if args.verbose >= 3:
-			print("\t- Address %d:" % device.address)
+		#if args.verbose >= 3:
+		print(("\t- Address %d:" % device.address))
 
-			# id data
-			print("\t\t- ID:")
-			for (id_key, id_string) in enumerate(device.id_data):
-				print("\t\t\t- %s: %s" % (id_meanings[id_key], id_string))
-			print
+		# id data
+		print("\t\t- ID:")
+		for (id_key, id_string) in enumerate(device.id_data):
+			print(("\t\t\t- %s: %s" % (id_meanings[id_key], id_string)))
+		print()
 
-			# version numbers
-			print("\t\t- Versions:")
-			for (version_key, version_number) in device.versions.items():
-				print("\t\t\t- %s: %1.1f" % (version_key, version_number))
-			print
+		# version numbers
+		print("\t\t- Versions:")
+		for (version_key, version_number) in list(device.versions.items()):
+			print(("\t\t\t- %s: %1.1f" % (version_key, version_number)))
+		print()
 
 			# capability data
-			print("\t\t- Capabilities:")
-			for (cap_key, cap_args) in device.capabilities.items():
-				print("\t\t\t- %s: %s" % (cap_key, repr(cap_args)))
-			print
+		print("\t\t- Capabilities:")
+		for (cap_key, cap_args) in list(device.capabilities.items()):
+			print(("\t\t\t- %s: %s" % (cap_key, repr(cap_args))))
+		print()
 
-		# create a system uinput device, and a uinput device for each player, within each capable bus device
-		if 'switches' in device.capabilities and device.address in possible_events:
-			device.uinput_devices = { }
-			if 0 in possible_events[device.address]:
-				device.uinput_devices[0] = uinput.Device(possible_events[device.address][0], name='openjvs_a%dsys' % device.address)		# add system device, for TEST and TILT switches
+	# create a system uinput device, and a uinput device for each player, within each capable bus device
+	if 'switches' in device.capabilities and device.address in possible_events:
+		device.uinput_devices = { }
+		if 0 in possible_events[device.address]:
+			device.uinput_devices[0] = uinput.Device(possible_events[device.address][0], name='openjvs_a%dsys' % device.address)		# add system device, for TEST and TILT switches
 
-			for player in range(1, device.capabilities['switches']['players']+1):
-				if player in possible_events[device.address]:
-					device.uinput_devices[player] = uinput.Device(possible_events[device.address][player], name='openjvs_a%dp%d' % (device.address, player))	# add player device
-					verbose(3, "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.address, player, player))
-			verbose(3, "")	# empty line
+		for player in range(1, device.capabilities['switches']['players']+1):
+			if player in possible_events[device.address]:
+				device.uinput_devices[player] = uinput.Device(possible_events[device.address][player], name='openjvs_a%dp%d' % (device.address, player))	# add player device
+				verbose(3, "\t\t- Creating device openjvs_a%dp%d for player %d" % (device.address, player, player))
+		verbose(3, "")	# empty line
 	return jvs_state
 
 def cleanup_handler(signal, frame):
@@ -216,7 +215,7 @@ try:
 
 		context.files_preserve = [ log_file, jvs_state.ser.fileno(), jvs_state.keyboard_device._Device__uinput_fd ]
 		for device in jvs_state.devices:
-			for udevice in device.uinput_devices.values():
+			for udevice in list(device.uinput_devices.values()):
 				verbose(3, "%s : %s" % (device, udevice));
 				context.files_preserve.append(udevice._Device__uinput_fd)
 

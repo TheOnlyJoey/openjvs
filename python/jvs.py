@@ -100,7 +100,7 @@ class JVS:
 
 	def write_byte(self, byte):
 		"""Write out a single byte with no framing. Used internally to write out a packet."""
-		self.ser.write(chr(byte))
+		self.ser.write(bytes([byte]))
 
 		if self.dump:
 			if byte == SYNC or self.prev_byte_received == True:
